@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevQuote Board</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;display:flex;flex-direction:column}
+
+/* HEADER — IDE titlebar style */
+.titlebar{background:#161b22;border-bottom:1px solid #21262d;padding:0;display:flex;align-items:stretch;height:48px}
+.tb-dots{display:flex;align-items:center;gap:.4rem;padding:0 1rem;border-right:1px solid #21262d}
+.dot{width:12px;height:12px;border-radius:50%}
+.dot-r{background:#ff5f57}.dot-y{background:#febc2e}.dot-g{background:#28c840}
+.tb-tabs{display:flex;flex:1;overflow:hidden}
+.tb-tab{display:flex;align-items:center;gap:.5rem;padding:0 1.2rem;font-size:.78rem;color:#6e7681;border-right:1px solid #21262d;cursor:pointer;transition:all .15s;white-space:nowrap}
+.tb-tab:hover{background:rgba(255,255,255,.03);color:#8b949e}
+.tb-tab.active{background:#0d1117;color:#e6edf3;border-bottom:2px solid #388bfd;margin-bottom:-1px}
+.tb-tab .tab-icon{font-size:.9rem}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:.5rem;padding:0 1rem;border-left:1px solid #21262d}
+.tb-btn{background:rgba(255,255,255,.05);border:1px solid #30363d;color:#8b949e;font-family:'JetBrains Mono',monospace;font-size:.7rem;padding:.3rem .7rem;border-radius:4px;cursor:pointer;transition:all .15s}
+.tb-btn:hover{background:rgba(255,255,255,.08);color:#e6edf3}
+.tb-btn.primary{background:#238636;border-color:#2ea043;color:#fff}
+.tb-btn.primary:hover{background:#2ea043}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:240px 1fr 260px;flex:1;min-height:0}
+
+/* LEFT PANEL — file explorer */
+.explorer{background:#161b22;border-right:1px solid #21262d;padding:0;overflow-y:auto}
+.exp-head{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6e7681;padding:.8rem 1rem;border-bottom:1px solid #21262d}
+.exp-section{border-bottom:1px solid #0d1117}
+.exp-section-title{display:flex;align-items:center;gap:.4rem;padding:.55rem .8rem;font-size:.75rem;color:#8b949e;cursor:pointer;transition:background .15s}
+.exp-section-title:hover{background:rgba(255,255,255,.03)}
+.exp-file{padding:.4rem .8rem .4rem 2rem;font-size:.75rem;color:#8b949e;cursor:pointer;display:flex;align-items:center;gap:.5rem;transition:all .15s;border-left:2px solid transparent}
+.exp-file:hover{background:rgba(255,255,255,.04);color:#e6edf3}
+.exp-file.active{background:rgba(56,139,253,.1);color:#388bfd;border-left-color:#388bfd}
+.exp-file .ef-icon{font-size:.85rem}
+
+/* MAIN EDITOR */
+.editor-pane{display:flex;flex-direction:column;overflow:hidden}
+.line-numbers{display:flex;flex-direction:column;padding:1.5rem 0;min-width:48px;text-align:right;padding-right:.8rem;color:#6e7681;font-family:'JetBrains Mono',monospace;font-size:.78rem;line-height:1.7;flex-shrink:0;border-right:1px solid #21262d;background:#0d1117;user-select:none}
+.editor-row{display:flex;flex:1;overflow:hidden}
+.editor-content{flex:1;padding:1.5rem 2rem;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:.88rem;line-height:1.7}
+
+/* QUOTE DISPLAY */
+.quote-block{margin-bottom:2rem}
+.qb-comment{color:#6e7681;font-style:italic}
+.qb-const{color:#ff7b72}
+.qb-var{color:#79c0ff}
+.qb-equals{color:#e6edf3}
+.qb-str{color:#a5d6ff}
+.qb-fn{color:#d2a8ff}
+.qb-num{color:#f0883e}
+.qb-punct{color:#e6edf3}
+.qb-text{font-family:'Inter',sans-serif;font-size:1.05rem;font-weight:500;color:#e6edf3;line-height:1.6;margin:.3rem 0}
+.qb-author{color:#7ee787}
+.qb-semi{color:#e6edf3}
+.reaction-row{display:flex;gap:.5rem;margin-top:1rem;flex-wrap:wrap}
+.rxn{background:rgba(255,255,255,.04);border:1px solid #30363d;border-radius:20px;padding:.3rem .8rem;font-size:.78rem;color:#8b949e;cursor:pointer;display:flex;align-items:center;gap:.3rem;transition:all .15s}
+.rxn:hover{background:rgba(255,255,255,.08);border-color:#555;color:#e6edf3}
+.rxn.reacted{background:rgba(56,139,253,.12);border-color:#388bfd;color:#58a6ff}
+
+.code-snippet{background:#161b22;border:1px solid #21262d;border-radius:8px;margin-top:1rem;overflow:hidden}
+.cs-header{background:#1f2428;padding:.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #21262d}
+.cs-lang{font-size:.65rem;color:#8b949e;text-transform:uppercase;letter-spacing:.08em;font-family:'JetBrains Mono',monospace}
+.cs-copy{background:none;border:none;color:#8b949e;font-size:.7rem;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:color .15s}
+.cs-copy:hover{color:#e6edf3}
+.cs-body{padding:1rem;font-size:.8rem;line-height:1.6;overflow-x:auto;white-space:pre}
+
+/* STATUS BAR */
+.statusbar{background:#0d419d;border-top:1px solid #21262d;padding:.3rem 1rem;display:flex;align-items:center;gap:1.5rem;font-size:.68rem;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.7);flex-shrink:0}
+.sb-item{display:flex;align-items:center;gap:.3rem}
+
+/* RIGHT PANEL */
+.right-panel{border-left:1px solid #21262d;background:#161b22;display:flex;flex-direction:column;overflow:hidden}
+.rp-section{border-bottom:1px solid #21262d;padding:1rem}
+.rp-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#6e7681;margin-bottom:.8rem;display:flex;align-items:center;gap:.4rem}
+.challenge-card{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:.9rem;transition:border-color .15s}
+.challenge-card:hover{border-color:#388bfd}
+.ch-tag{font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#388bfd;margin-bottom:.4rem;font-family:'JetBrains Mono',monospace}
+.ch-text{font-size:.8rem;color:#c9d1d9;line-height:1.5;margin-bottom:.6rem}
+.ch-btn{background:#238636;border:none;border-radius:4px;color:#fff;font-size:.7rem;font-family:'JetBrains Mono',monospace;padding:.3rem .7rem;cursor:pointer;transition:background .15s}
+.ch-btn:hover{background:#2ea043}
+.fav-item{display:flex;gap:.5rem;align-items:flex-start;padding:.45rem 0;border-bottom:1px solid #0d1117}
+.fav-item:last-child{border-bottom:none}
+.fi-text{font-size:.72rem;color:#8b949e;font-style:italic;flex:1;line-height:1.4}
+.fi-del{background:none;border:none;color:#30363d;cursor:pointer;font-size:.8rem;transition:color .15s;flex-shrink:0}
+.fi-del:hover{color:#f85149}
+.search-box{width:100%;background:#0d1117;border:1px solid #21262d;border-radius:4px;color:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:.75rem;padding:.45rem .7rem;outline:none;transition:border-color .15s;margin-bottom:.8rem}
+.search-box:focus{border-color:#388bfd}
+.result-item{padding:.45rem .6rem;border-radius:4px;cursor:pointer;font-size:.72rem;color:#8b949e;transition:all .15s}
+.result-item:hover{background:rgba(255,255,255,.04);color:#e6edf3}
+.tip-card{background:#0d1117;border-left:3px solid #f0883e;border-radius:0 6px 6px 0;padding:.7rem .9rem}
+.tip-text{font-size:.75rem;color:#c9d1d9;line-height:1.5}
+
+.nav-btns{display:flex;gap:.5rem;padding:1rem;border-top:1px solid #21262d;margin-top:auto}
+.nav-btn{flex:1;background:rgba(255,255,255,.04);border:1px solid #30363d;color:#8b949e;font-family:'JetBrains Mono',monospace;font-size:.75rem;padding:.5rem;border-radius:4px;cursor:pointer;transition:all .15s}
+.nav-btn:hover{background:rgba(255,255,255,.08);color:#e6edf3}
+.nav-btn.primary{background:#238636;border-color:#2ea043;color:#fff}
+.nav-btn.primary:hover{background:#2ea043}
+
+@media(max-width:900px){.layout{grid-template-columns:1fr}.explorer,.right-panel{display:none}}
+</style>
+</head>
+<body>
+<div class="titlebar">
+  <div class="tb-dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+  <div class="tb-tabs">
+    <div class="tb-tab active" id="tab-quotes" onclick="showView('quotes')"><span class="tab-icon">📜</span> quotes.js</div>
+    <div class="tb-tab" id="tab-search" onclick="showView('search')"><span class="tab-icon">🔍</span> search.js</div>
+    <div class="tb-tab" id="tab-favs" onclick="showView('favs')"><span class="tab-icon">⭐</span> favourites.js</div>
+  </div>
+  <div class="tb-right">
+    <button class="tb-btn" onclick="prevQuote()">← prev</button>
+    <button class="tb-btn primary" onclick="nextQuote()">next →</button>
+    <button class="tb-btn" onclick="favQuote()">★ save</button>
+    <button class="tb-btn" onclick="copyQuote()">copy</button>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- FILE EXPLORER -->
+  <div class="explorer">
+    <div class="exp-head">Explorer</div>
+    <div class="exp-section">
+      <div class="exp-section-title">▾ 📁 devquotes</div>
+      <div id="file-list"></div>
+    </div>
+    <div class="exp-section">
+      <div class="exp-section-title">▾ 📁 favourites</div>
+      <div id="fav-file-list"></div>
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="editor-pane">
+    <div class="editor-row">
+      <div class="line-numbers" id="line-nums"></div>
+      <div class="editor-content" id="editor-content"></div>
+    </div>
+    <div class="statusbar">
+      <div class="sb-item">⎇ main</div>
+      <div class="sb-item">🔡 JavaScript</div>
+      <div class="sb-item" id="sb-pos">Ln 1, Col 1</div>
+      <div class="sb-item" id="sb-count">0 / 0 quotes</div>
+      <div class="sb-item" style="margin-left:auto">UTF-8</div>
+      <div class="sb-item">DevQuote Board v2.0</div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="rp-section">
+      <div class="rp-title">⚡ Challenge of the Day</div>
+      <div id="challenge-area"></div>
+    </div>
+    <div class="rp-section" style="flex:1;overflow-y:auto">
+      <div class="rp-title">⭐ Saved Quotes (<span id="fav-count">0</span>)</div>
+      <div id="fav-list-mini"></div>
+    </div>
+    <div class="rp-section">
+      <div class="rp-title">💡 Dev Tip</div>
+      <div class="tip-card"><div class="tip-text" id="dev-tip"></div></div>
+    </div>
+    <div class="nav-btns">
+      <button class="nav-btn" onclick="prevQuote()">← Prev</button>
+      <button class="nav-btn primary" onclick="nextQuote()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUOTES=[
+  {text:"Any fool can write code that a computer can understand. Good programmers write code that humans can understand.",author:"Martin Fowler",tag:"clean-code",reaction:{fire:0,mind:0,agree:0},code:`// Bad\nfunction d(x) { return x * 86400; }\n\n// Good\nfunction convertDaysToSeconds(days) {\n  const SECONDS_PER_DAY = 86400;\n  return days * SECONDS_PER_DAY;\n}`},
+  {text:"First, solve the problem. Then, write the code.",author:"John Johnson",tag:"problem-solving",reaction:{fire:0,mind:0,agree:0},code:`// Step 1: Understand the problem\n// Step 2: Plan your approach\n// Step 3: Pseudocode\n// Step 4: Implement\n// Step 5: Test & refine\nconst solution = plan().then(implement).then(test);`},
+  {text:"Debugging is twice as hard as writing the code in the first place. Therefore, if you write the code as cleverly as possible, you are, by definition, not smart enough to debug it.",author:"Brian Kernighan",tag:"debugging",reaction:{fire:0,mind:0,agree:0},code:`try {\n  writeCleverCode();\n} catch (e) {\n  // Now you're not clever enough to debug it\n  console.log('Why did I do this...', e);\n}`},
+  {text:"Premature optimization is the root of all evil.",author:"Donald Knuth",tag:"optimization",reaction:{fire:0,mind:0,agree:0},code:`// Don't optimize before profiling:\n// let i = arr.length; while(i--) { ... }\n\n// Just write readable code first:\nfor (const item of arr) {\n  process(item);\n}`},
+  {text:"Make it work, make it right, make it fast.",author:"Kent Beck",tag:"workflow",reaction:{fire:0,mind:0,agree:0},code:`// Phase 1: Make it work\nfunction add(a, b) { return a + b; }\n\n// Phase 2: Make it right (tests, edge cases)\n// Phase 3: Make it fast (only if needed)`},
+  {text:"Code is like humor. When you have to explain it, it's bad.",author:"Cory House",tag:"readability",reaction:{fire:0,mind:0,agree:0},code:`// Needs explanation = bad:\nconst r = u.f ? u.p?.a?.[0] : null;\n\n// Self-explanatory = good:\nconst primaryAddress = user.isActive\n  ? user.profile?.addresses?.[0]\n  : null;`},
+  {text:"Talk is cheap. Show me the code.",author:"Linus Torvalds",tag:"action",reaction:{fire:0,mind:0,agree:0},code:`git add .\ngit commit -m "feat: implement the feature"\ngit push origin main\n# Actions > Words`},
+  {text:"Programs must be written for people to read, and only incidentally for machines to execute.",author:"Harold Abelson",tag:"readability",reaction:{fire:0,mind:0,agree:0},code:`// Readable > Clever\nconst isAdult = age => age >= 18;\nconst canVote = user => isAdult(user.age);\nconst voters  = users.filter(canVote);`},
+  {text:"The best error message is the one that never shows up.",author:"Thomas Fuchs",tag:"UX",reaction:{fire:0,mind:0,agree:0},code:`function safeDivide(a, b) {\n  if (b === 0) return 0; // prevent error\n  return a / b;\n}`},
+  {text:"Simplicity is the soul of efficiency.",author:"Austin Freeman",tag:"design",reaction:{fire:0,mind:0,agree:0},code:`// Over-engineered:\nconst FactoryServiceManagerImpl = new FactoryServiceManager();\n\n// Simple:\nconst service = createService();`},
+];
+const CHALLENGES=[
+  {tag:'JS',text:'Write a function that flattens a nested array to any depth without using Array.flat()'},
+  {tag:'CSS',text:'Create a pure CSS animated gradient border using only pseudo-elements'},
+  {tag:'Algorithm',text:'Implement a debounce function from scratch in under 10 lines'},
+  {tag:'React',text:'Build a custom useLocalStorage hook that syncs state with localStorage'},
+  {tag:'Git',text:'Write a git alias that shows a pretty one-line log with colors and graph'},
+  {tag:'Regex',text:'Write a regex that validates email addresses and explain each part'},
+];
+const TIPS=[
+  'Use console.table() instead of console.log() to visualise arrays of objects in the browser.',
+  'git stash pop restores your last stash and removes it — git stash apply keeps the stash for later.',
+  'CSS :is() lets you group selectors: :is(h1, h2, h3) { } — cleaner than listing each separately.',
+  'Array.at(-1) gets the last element cleanly, no more arr[arr.length - 1].',
+  'Use structuredClone() for a true deep clone of objects — no JSON.parse/stringify needed.',
+  'The ?? operator only falls back on null/undefined, not 0 or "" like || does.',
+  'Use Promise.allSettled() when you want all results even if some promises fail.',
+];
+
+let cur=0,view='quotes',favs=JSON.parse(localStorage.getItem('dqb3_favs')||'[]');
+const reactions=JSON.parse(localStorage.getItem('dqb3_rxn')||'{}');
+const reacted=JSON.parse(localStorage.getItem('dqb3_reacted')||'{}');
+
+const TAGS=[...new Set(QUOTES.map(q=>q.tag))];
+
+function showView(v){
+  view=v;
+  document.querySelectorAll('.tb-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(`tab-${v}`).classList.add('active');
+  if(v==='quotes')renderQuote();
+  if(v==='search')renderSearch();
+  if(v==='favs')renderFavsView();
+}
+
+function renderQuote(){
+  const q=QUOTES[cur];
+  const rxn=reactions[cur]||{fire:0,mind:0,agree:0};
+  const lines=20;
+  document.getElementById('line-nums').innerHTML=Array.from({length:lines},(_,i)=>`<span>${i+1}</span>`).join('');
+  document.getElementById('sb-pos').textContent=`Ln ${cur+1}, Col 1`;
+  document.getElementById('sb-count').textContent=`${cur+1} / ${QUOTES.length} quotes`;
+  document.getElementById('editor-content').innerHTML=`
+    <div class="quote-block">
+      <div class="qb-comment">// ${q.tag} — devquotes.js</div>
+      <div style="margin:.5rem 0">
+        <span class="qb-const">const</span> <span class="qb-var">quote</span> <span class="qb-equals">=</span> <span class="qb-punct">{</span>
+      </div>
+      <div style="padding-left:1.5rem">
+        <span class="qb-var">text</span><span class="qb-punct">:</span> <span class="qb-str">\`</span><div class="qb-text">${q.text}</div><span class="qb-str">\`</span><span class="qb-punct">,</span><br>
+        <span class="qb-var">author</span><span class="qb-punct">:</span> <span class="qb-str qb-author">"${q.author}"</span><span class="qb-punct">,</span><br>
+        <span class="qb-var">tag</span><span class="qb-punct">:</span> <span class="qb-str">"${q.tag}"</span><span class="qb-punct">,</span>
+      </div>
+      <div><span class="qb-punct">}</span><span class="qb-semi">;</span></div>
+    </div>
+    <div class="reaction-row">
+      <button class="rxn ${reacted[cur+'fire']?'reacted':''}" onclick="react(${cur},'fire')">🔥 ${rxn.fire||0}</button>
+      <button class="rxn ${reacted[cur+'mind']?'reacted':''}" onclick="react(${cur},'mind')">🤯 ${rxn.mind||0}</button>
+      <button class="rxn ${reacted[cur+'agree']?'reacted':''}" onclick="react(${cur},'agree')">💯 ${rxn.agree||0}</button>
+    </div>
+    ${q.code?`<div class="code-snippet">
+      <div class="cs-header"><span class="cs-lang">javascript</span><button class="cs-copy" onclick="copySnippet()">copy</button></div>
+      <div class="cs-body"><span class="qb-comment">${q.code.split('\n').map(l=>l.startsWith('//')?`<span style="color:#6e7681;font-style:italic">${l}</span>`:l.replace(/\b(const|let|var|function|return|if|for|of|new|class|import|export|from|async|await|try|catch|throw)\b/g,'<span class="qb-const">$1</span>').replace(/"([^"]*)"/g,'<span class="qb-str">"$1"</span>').replace(/`([^`]*)`/g,'<span class="qb-str">\`$1\`</span>')).join('\n')}</span></div>
+    </div>`:''}`;
+  renderFileList();renderFavMini();
+}
+
+function renderFileList(){
+  document.getElementById('file-list').innerHTML=QUOTES.map((q,i)=>`
+    <div class="exp-file ${i===cur?'active':''}" onclick="jumpTo(${i})"><span class="ef-icon">${i===cur?'📄':'📃'}</span> ${q.tag}.${i+1}.js</div>`).join('');
+  document.getElementById('fav-file-list').innerHTML=favs.length
+    ?favs.map((f,i)=>`<div class="exp-file" onclick="jumpTo(${f})"><span class="ef-icon">⭐</span> fav.${i+1}.js</div>`).join('')
+    :'<div style="padding:.4rem .8rem 0 2rem;font-size:.7rem;color:#444">No favourites yet</div>';
+}
+
+function renderFavMini(){
+  document.getElementById('fav-count').textContent=favs.length;
+  document.getElementById('fav-list-mini').innerHTML=favs.length
+    ?favs.map(f=>`<div class="fav-item"><div class="fi-text">"${QUOTES[f].text.slice(0,60)}…"</div><button class="fi-del" onclick="removeFav(${f})">✕</button></div>`).join('')
+    :'<div style="font-size:.72rem;color:#444;font-style:italic">Save quotes with ★</div>';
+}
+
+function renderSearch(){
+  document.getElementById('editor-content').innerHTML=`
+    <div style="margin-bottom:1.5rem">
+      <span class="qb-comment">// Search quotes by author, tag, or keyword</span>
+    </div>
+    <input class="search-box" id="sq" placeholder='search("keyword")...' oninput="doSearch()">
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem">
+      ${TAGS.map(t=>`<button onclick="searchTag('${t}')" style="background:rgba(56,139,253,.1);border:1px solid rgba(56,139,253,.2);color:#58a6ff;border-radius:4px;padding:2px 8px;font-size:.7rem;cursor:pointer;font-family:'JetBrains Mono',monospace">#${t}</button>`).join('')}
+    </div>
+    <div id="search-results"></div>`;
+}
+
+function doSearch(){
+  const q=document.getElementById('sq').value.toLowerCase();
+  if(!q){document.getElementById('search-results').innerHTML='';return}
+  const res=QUOTES.map((qt,i)=>({qt,i})).filter(({qt})=>qt.text.toLowerCase().includes(q)||qt.author.toLowerCase().includes(q)||qt.tag.includes(q));
+  document.getElementById('search-results').innerHTML=res.length
+    ?res.map(({qt,i})=>`<div class="result-item" onclick="jumpToFromSearch(${i})"><span style="color:#388bfd">#${qt.tag}</span> — "${qt.text.slice(0,60)}…" <span style="color:#7ee787">— ${qt.author}</span></div>`).join('')
+    :'<div style="color:#444;font-size:.78rem;font-style:italic">No results found.</div>';
+}
+function searchTag(t){if(document.getElementById('sq'))document.getElementById('sq').value=t;doSearch()}
+function jumpToFromSearch(i){cur=i;showView('quotes')}
+
+function renderFavsView(){
+  document.getElementById('editor-content').innerHTML=favs.length
+    ?`<div class="qb-comment">// Your saved quotes — ${favs.length} items</div><br>`+favs.map(f=>`
+      <div style="margin-bottom:2rem;border-left:3px solid #388bfd;padding-left:1.2rem">
+        <div class="qb-text" style="font-size:.9rem">${QUOTES[f].text}</div>
+        <div style="color:#7ee787;font-size:.78rem;margin-top:.4rem">— ${QUOTES[f].author}</div>
+        <button onclick="removeFav(${f})" style="margin-top:.4rem;background:none;border:none;color:#f85149;font-size:.7rem;cursor:pointer;font-family:'JetBrains Mono',monospace">remove</button>
+      </div>`).join('')
+    :'<div class="qb-comment">// No favourites yet</div><br><div style="color:#444;font-size:.82rem;font-style:italic">Save quotes you love using the ★ button in the toolbar.</div>';
+}
+
+function react(i,type){
+  if(!reactions[i])reactions[i]={fire:0,mind:0,agree:0};
+  const key=i+type;
+  if(reacted[key]){reactions[i][type]--;reacted[key]=false}else{reactions[i][type]++;reacted[key]=true}
+  localStorage.setItem('dqb3_rxn',JSON.stringify(reactions));
+  localStorage.setItem('dqb3_reacted',JSON.stringify(reacted));
+  renderQuote();
+}
+function favQuote(){
+  if(!favs.includes(cur))favs.push(cur);else favs=favs.filter(f=>f!==cur);
+  localStorage.setItem('dqb3_favs',JSON.stringify(favs));renderFavMini();renderFileList();
+}
+function removeFav(f){favs=favs.filter(x=>x!==f);localStorage.setItem('dqb3_favs',JSON.stringify(favs));if(view==='favs')renderFavsView();renderFavMini();renderFileList()}
+function prevQuote(){cur=(cur-1+QUOTES.length)%QUOTES.length;showView('quotes')}
+function nextQuote(){cur=(cur+1)%QUOTES.length;showView('quotes')}
+function jumpTo(i){cur=i;showView('quotes')}
+function copyQuote(){navigator.clipboard.writeText(`"${QUOTES[cur].text}" — ${QUOTES[cur].author}`).then(()=>{})}
+function copySnippet(){navigator.clipboard.writeText(QUOTES[cur].code||'').then(()=>{})}
+
+// Challenge & tip
+const c=CHALLENGES[Math.floor(Math.random()*CHALLENGES.length)];
+document.getElementById('challenge-area').innerHTML=`<div class="challenge-card"><div class="ch-tag">${c.tag}</div><div class="ch-text">${c.text}</div><button class="ch-btn" onclick="this.textContent='Copied! Now go build it 🚀'" style="transition:all .2s">Accept Challenge</button></div>`;
+document.getElementById('dev-tip').textContent=TIPS[Math.floor(Math.random()*TIPS.length)];
+
+renderQuote();
+</script>
+</body>
+</html>
